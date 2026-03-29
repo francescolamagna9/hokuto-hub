@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evolve PM</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/project.css">
+  <link rel="stylesheet" href="css/brief.css">
+  <link rel="stylesheet" href="css/checklist.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+</head>
+<body>
+
+<!-- ═══ SETUP SCREEN ═══ -->
+<div id="view-setup" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);align-items:center;justify-content:center;">
+  <div class="setup-card">
+    <div class="setup-logo">
+      <div class="logo-mark">E</div>
+      <div class="logo-text">EVOLVE PM<span>Project Manager</span></div>
+    </div>
+    <h2>Benvenuto</h2>
+    <p>Per usare il parsing AI dei brief, inserisci la tua API Key Groq. La key viene salvata solo nel tuo browser.</p>
+    <div class="form-group">
+      <label class="form-label">Groq API Key</label>
+      <input class="form-input mono" id="setup-key-input" type="password" placeholder="gsk_..."
+        onkeydown="if(event.key==='Enter') handleSetupSubmit()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;" id="setup-test-btn" onclick="handleSetupSubmit()">
+      Testa Connessione &amp; Accedi
+    </button>
+    <p class="setup-hint">
+      Non hai una key? Ottienila gratis su
+      <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>
+    </p>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div id="app" style="display:none;">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">E</div>
+      <div class="logo-text">EVOLVE PM<span>Project Manager</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#dashboard" class="active">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+        Dashboard
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#settings">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.9 2.9l1.1 1.1M12 12l1.1 1.1M2.9 13.1L4 12M12 4l1.1-1.1"/></svg>
+        Impostazioni
+        <div class="api-status" style="margin-left:auto;">
+          <div class="dot"></div>
+        </div>
+      </a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main id="main-content">
+
+    <!-- DASHBOARD VIEW -->
+    <div id="view-dashboard" class="view active" style="padding:36px 40px;">
+      <div class="dashboard-header">
+        <div>
+          <h1>Progetti</h1>
+          <p>Gestisci i tuoi progetti web in un unico posto.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openNewProjectModal()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1v12M1 7h12"/></svg>
+          Nuovo Progetto
+        </button>
+      </div>
+      <div id="projects-grid" class="projects-grid"></div>
+    </div>
+
+    <!-- PROJECT VIEW -->
+    <div id="view-project" class="view">
+      <!-- Header -->
+      <div id="project-header">
+        <a class="project-header-back" href="#dashboard">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2L4 7l5 5"/></svg>
+        </a>
+        <div class="project-header-info">
+          <div class="project-header-name" id="project-header-name"></div>
+          <div class="project-header-meta" id="project-header-meta"></div>
+        </div>
+        <div class="project-header-actions">
+          <button class="btn btn-secondary btn-sm" onclick="openExportModal(currentProjectId)">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1v8M3 6l4 4 4-4M1 10v2a1 1 0 001 1h10a1 1 0 001-1v-2"/></svg>
+            Export
+          </button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 9V1M3 5l4-4 4 4M1 10v2a1 1 0 001 1h10a1 1 0 001-1v-2"/></svg>
+            Import
+            <input type="file" accept=".json" style="display:none" onchange="openImportModalFromFile(event)">
+          </label>
+        </div>
+      </div>
+
+      <!-- Tab Nav -->
+      <div id="project-tabs">
+        <button class="tab-btn active" data-tab="brief" onclick="switchTab('brief')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h10v10H2z"/><path d="M5 5h4M5 8h4"/></svg>
+          Brief
+        </button>
+        <button class="tab-btn" data-tab="checklist" onclick="switchTab('checklist')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7l2 2 4-4"/><rect x="1" y="1" width="12" height="12" rx="2"/></svg>
+          Checklist
+          <span class="tab-progress-badge">0%</span>
+        </button>
+        <button class="tab-btn" data-tab="access" onclick="switchTab('access')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 6V4a3 3 0 00-6 0v2"/><rect x="1" y="6" width="12" height="8" rx="1.5"/><circle cx="7" cy="10" r="1"/></svg>
+          Accessi WP
+        </button>
+        <button class="tab-btn" data-tab="assets" onclick="switchTab('assets')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h10M2 7h7M2 10h5"/></svg>
+          Assets & Link
+        </button>
+        <button class="tab-btn" data-tab="revisions" onclick="switchTab('revisions')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 7a6 6 0 1012 0A6 6 0 001 7zm6-3v3l2 2"/></svg>
+          Revisioni
+        </button>
+      </div>
+
+      <!-- Tab Content -->
+      <div id="project-content">
+        <div id="tab-brief" class="tab-pane active"></div>
+        <div id="tab-checklist" class="tab-pane"></div>
+        <div id="tab-access" class="tab-pane"></div>
+        <div id="tab-assets" class="tab-pane"></div>
+        <div id="tab-revisions" class="tab-pane"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div id="view-settings" class="view" style="padding:36px 40px;max-width:600px;"></div>
+
+  </main>
+</div>
+
+<!-- ═══ TOAST ═══ -->
+<div id="toast-container"></div>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- New Project Modal -->
+<div class="modal-overlay" id="modal-new-project">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2>Nuovo Progetto</h2>
+        <p>Crea un nuovo progetto e opzionalmente carica il brief.</p>
+      </div>
+      <button class="modal-close" onclick="closeNewProjectModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nome Progetto *</label>
+      <input class="form-input" id="new-project-name" type="text" placeholder="es. Taglia e Cuci Express"
+        onkeydown="if(event.key==='Enter') confirmNewProject()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Cliente</label>
+      <input class="form-input" id="new-project-client" type="text" placeholder="Ragione sociale">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Brief .docx (opzionale)</label>
+      <label class="upload-zone" id="new-brief-upload-zone" style="cursor:pointer;">
+        <input type="file" id="new-brief-file-input" accept=".docx">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:24px;height:24px;margin-bottom:8px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        <div>Trascina il file .docx qui</div>
+        <p id="new-brief-file-name" style="color:var(--accent);margin-top:4px;"></p>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeNewProjectModal()">Annulla</button>
+      <button class="btn btn-primary" onclick="confirmNewProject()">Crea Progetto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Project Modal -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <div>
+        <h2>Elimina Progetto</h2>
+        <p>Questa azione non può essere annullata.</p>
+      </div>
+      <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+    </div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:8px;">Stai per eliminare il progetto:</p>
+    <p style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--danger);" id="delete-project-name"></p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDeleteModal()">Annulla</button>
+      <button class="btn btn-danger" onclick="confirmDeleteProject()">Elimina definitivamente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="modal-export">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2>Export Selettivo</h2>
+        <p>Scegli cosa includere nel backup.</p>
+      </div>
+      <button class="modal-close" onclick="closeExportModal()">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <label class="checkbox-wrap">
+        <input type="checkbox" value="brief" id="export-brief">
+        <div class="checkbox-custom"></div>
+        <div class="checkbox-label">Brief (dati estratti da Groq)</div>
+      </label>
+      <label class="checkbox-wrap">
+        <input type="checkbox" value="checklist" id="export-checklist">
+        <div class="checkbox-custom"></div>
+        <div class="checkbox-label">Checklist (stato delle 10 fasi)</div>
+      </label>
+      <label class="checkbox-wrap">
+        <input type="checkbox" value="access" id="export-access">
+        <div class="checkbox-custom"></div>
+        <div class="checkbox-label">Accessi (URL, username, password)</div>
+      </label>
+      <label class="checkbox-wrap">
+        <input type="checkbox" value="assets" id="export-assets">
+        <div class="checkbox-custom"></div>
+        <div class="checkbox-label">Assets (link, note, aggiornamenti brief)</div>
+      </label>
+      <label class="checkbox-wrap">
+        <input type="checkbox" value="revisions" id="export-revisions">
+        <div class="checkbox-custom"></div>
+        <div class="checkbox-label">Revisioni (tutti i round)</div>
+      </label>
+      <div class="divider"></div>
+      <label class="checkbox-wrap">
+        <input type="checkbox" id="export-all" onchange="document.querySelectorAll('#modal-export input:not(#export-all)').forEach(c=>c.checked=this.checked)">
+        <div class="checkbox-custom"></div>
+        <div class="checkbox-label" style="font-weight:600;color:var(--text);">Tutto il progetto</div>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeExportModal()">Annulla</button>
+      <button class="btn btn-primary" onclick="confirmExport()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1v8M3 6l4 4 4-4M1 10v2a1 1 0 001 1h10a1 1 0 001-1v-2"/></svg>
+        Scarica JSON
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div>
+        <h2>Import Selettivo</h2>
+        <p>Importa sezioni da un file di backup.</p>
+      </div>
+      <button class="modal-close" onclick="closeImportModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Seleziona file JSON</label>
+      <label class="upload-zone" style="cursor:pointer;">
+        <input type="file" accept=".json" onchange="handleImportFileSelect(event)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:24px;height:24px;margin-bottom:8px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        <div>Carica file backup .json</div>
+      </label>
+    </div>
+    <div id="import-preview" style="margin-top:16px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeImportModal()">Annulla</button>
+      <button class="btn btn-primary" onclick="confirmImport()">Importa Selezionato</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Link Modal -->
+<div class="modal-overlay" id="modal-add-link">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <div>
+        <h2>Aggiungi Link</h2>
+      </div>
+      <button class="modal-close" onclick="closeAddLinkModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Etichetta</label>
+      <input class="form-input" id="new-link-label" type="text" placeholder="es. Google Drive, Figma, Hosting..."
+        onkeydown="if(event.key==='Enter') document.getElementById('new-link-url').focus()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">URL</label>
+      <input class="form-input" id="new-link-url" type="url" placeholder="https://..."
+        onkeydown="if(event.key==='Enter') confirmAddLink()">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAddLinkModal()">Annulla</button>
+      <button class="btn btn-primary" onclick="confirmAddLink()">Aggiungi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCRIPTS (ordine critico) ═══ -->
+<script src="js/data/checklist-phases.js"></script>
+<script src="js/data/revision-parser.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/projects.js"></script>
+<script src="js/export.js"></script>
+<script src="js/render/dashboard.js"></script>
+<script src="js/render/brief.js"></script>
+<script src="js/render/access.js"></script>
+<script src="js/render/checklist.js"></script>
+<script src="js/render/assets.js"></script>
+<script src="js/render/revisions.js"></script>
+<script src="js/router.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+// Fix import from file input in header
+function openImportModalFromFile(event) {
+  const projectId = currentProjectId;
+  if (!projectId) return;
+  openImportModal(projectId);
+  // Trigger file reading
+  handleImportFileSelect(event);
+}
+</script>
+
+</body>
+</html>
