@@ -80,29 +80,11 @@ function renderBrief(project) {
 
   const brief = project.brief;
 
-  let uploadSection = `
-    <div class="brief-upload-header">
-      <h3>Brief Progetto</h3>
-      <span class="brief-status ${brief ? 'loaded' : 'empty'}">
-        <span class="dot"></span>
-        ${brief ? 'Brief caricato' : 'Nessun brief'}
-      </span>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:24px;">
-      <label class="upload-zone" style="flex:1;cursor:pointer;" id="brief-upload-zone">
-        <input type="file" id="brief-file-input" accept=".docx" onchange="handleBriefUpload(event, '${escHtml(project.id)}')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-        <div style="font-size:13px;">${brief ? 'Ricarica brief .docx' : 'Carica brief .docx'}</div>
-        <p>mammoth.js → Groq AI → JSON strutturato</p>
-      </label>
-    </div>
-  `;
-
   if (!brief) {
-    container.innerHTML = uploadSection + `<div class="empty-state">
+    container.innerHTML = `<div class="empty-state" style="padding-top:80px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M9 12h6M9 16h6M7 8h10M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>
       <h3>Nessun brief caricato</h3>
-      <p>Carica il file .docx del Project Bible per estrarre automaticamente tutti i dati.</p>
+      <p>Usa il pulsante "Carica brief" nella barra in alto per caricare il file .docx del Project Bible.</p>
     </div>`;
     return;
   }
@@ -114,7 +96,7 @@ function renderBrief(project) {
   const kw = brief.keywords || {};
   const st = brief.stile || {};
 
-  container.innerHTML = uploadSection + `
+  container.innerHTML = `
     <div class="brief-inner-tabs">
       <button class="brief-inner-tab active" onclick="switchBriefTab(this,'bs-scheda')">Scheda Cliente</button>
       <button class="brief-inner-tab" onclick="switchBriefTab(this,'bs-brand')">Brand</button>
@@ -305,13 +287,13 @@ async function handleBriefUpload(event, projectId) {
   const file = event.target.files[0];
   if (!file) return;
 
-  const zone = document.getElementById('brief-upload-zone');
-  const origContent = zone.innerHTML;
-  zone.innerHTML = `<input type="file" id="brief-file-input" accept=".docx" style="display:none">
-    <div class="loading-spinner"><div class="spinner"></div><span>Elaborazione con Groq AI...</span></div>`;
+  // Show loading state on the strip chip
+  const strip = document.getElementById('project-info-strip');
+  const loadingHtml = strip ? strip.innerHTML : '';
+
+  showToast('Estrazione testo in corso...', 'info');
 
   try {
-    // Extract text with mammoth
     const arrayBuffer = await file.arrayBuffer();
     const result = await mammoth.extractRawText({ arrayBuffer });
     const text = result.value;
@@ -320,16 +302,20 @@ async function handleBriefUpload(event, projectId) {
       throw new Error('Il file .docx sembra vuoto o non contiene testo sufficiente');
     }
 
-    // Parse with Groq
+    showToast('Analisi con Groq AI...', 'info');
     const briefData = await parseBriefWithGroq(text);
 
-    // Save
     updateProject(projectId, { brief: briefData, briefUpdatedAt: new Date().toISOString() });
     const project = getProject(projectId);
-    renderBrief(project);
+
+    // Refresh header strip e brief tab
+    updateClientHeader(project);
+    if (currentTab === 'brief') renderBrief(project);
+
     showToast('Brief estratto e salvato con successo!', 'success');
   } catch (err) {
-    zone.innerHTML = origContent;
     showToast('Errore: ' + err.message, 'error');
   }
+
+  if (event.target) event.target.value = '';
 }

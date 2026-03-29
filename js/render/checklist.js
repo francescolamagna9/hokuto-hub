@@ -7,11 +7,11 @@ function renderChecklist(project) {
   let navItems = PHASES.map(phase => {
     const pp = getPhaseProgress(project, phase.id);
     return `
-      <a class="checklist-phase-nav-item" href="#phase-${phase.id}" onclick="scrollToPhase(${phase.id})">
-        <span class="phase-nav-num">0${phase.id > 9 ? '' : ''}${phase.id}</span>
+      <div class="checklist-phase-nav-item" onclick="scrollToPhase(${phase.id})" style="cursor:pointer;">
+        <span class="phase-nav-num">${String(phase.id).padStart(2,'0')}</span>
         <span class="phase-nav-name">${escHtml(phase.title)}</span>
         <span class="phase-nav-pct">${pp.pct}%</span>
-      </a>`;
+      </div>`;
   }).join('');
 
   let phasesHtml = PHASES.map(phase => {
@@ -101,6 +101,7 @@ function toggleCheckItem(projectId, itemId, value) {
 
   // Update tab badge
   updateChecklistBadge(project);
+  refreshHeaderProgress(project);
 }
 
 function updateChecklistBadge(project) {
@@ -117,5 +118,9 @@ function toggleGroup(header) {
 
 function scrollToPhase(phaseId) {
   const el = document.getElementById('phase-' + phaseId);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const container = document.getElementById('project-content');
+  if (el && container) {
+    const top = el.offsetTop - container.offsetTop - 16;
+    container.scrollTo({ top, behavior: 'smooth' });
+  }
 }
